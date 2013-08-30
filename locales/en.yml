@@ -1,0 +1,11 @@
+en:
+  vagrant:
+    beaker:
+      incompatible_version: 'vagrant-beaker requires Vagrant >= 1.2'
+      states:
+        noop:
+          summary: 'A No Op Summary'
+          description: 'A No Op Description'
+      provider:
+        already_exists: 'VM already exists'
+

@@ -1,11 +1,11 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'vagrant/beaker/version'
+require 'vagrant-beaker/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "vagrant-beaker"
-  spec.version       = Vagrant::Beaker::VERSION
+  spec.version       = VagrantPlugins::Beaker::VERSION
   spec.authors       = ["Justin Stoller"]
   spec.email         = ["justin@puppetlabs.com"]
   spec.description   = %q{Provides a bridge so that Puppetlabs Test Tooling can be used within Vagrant}
