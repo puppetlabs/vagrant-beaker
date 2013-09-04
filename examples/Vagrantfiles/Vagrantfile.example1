@@ -1,0 +1,45 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.require_plugin 'vagrant-beaker'
+
+Vagrant.configure( '2' ) do |config|
+
+  #config.integration.tests  = 'acceptance/tests'
+  #config.integration.helper = 'acceptance/helper'
+
+  config.vm.box = 'centos-6-x86_64'
+
+  # The url from where the 'config.vm.box' box will be fetched if it
+  # doesn't already exist on the user's system.
+  config.vm.box_url = 'http://puppet-vagrant-boxes.puppetlabs.com/centos-64-x64-vbox4210-nocm.box'
+
+  config.vm.provider :vmware_fusion do |fusion, override|
+    override.vm.box_url = 'http://puppet-vagrant-boxes.puppetlabs.com/centos-64-x64-fusion503-nocm.box'
+  end
+
+  config.vm.define :master do |master|
+
+    # List the roles that the VM will have in a test run here:
+    master.testing.roles = %w{ master dashboard database agent }
+
+    master.vm.provider :vmware_fusion do |fusion, override|
+      override.vm.box_url = 'http://puppet-vagrant-boxes.puppetlabs.com/centos-64-x64-fusion503-nocm.box'
+    end
+
+    master.vm.provider :delivery do |delivery, override|
+      override.vm.box        = 'delivery'
+      delivery.template_name = 'centos-6-x86_64'
+    end
+  end
+
+  config.vm.define :agent do |agent|
+
+    agent.testing.roles = %w{ agent }
+
+    agent.vm.provider :delivery do |delivery, override|
+      override.vm.box        = 'delivery'
+      delivery.template_name = 'win-2008r2-x86_64'
+    end
+  end
+end

@@ -1,24 +1,51 @@
-# Vagrant::Beaker
+# Beaker as a Vagrant plugin
 
-TODO: Write a gem description
+This provides a bridge between Puppetlabs' test harness Beaker and Vagrant
 
 ## Installation
 
-Add this line to your application's Gemfile:
+There is a gem available in the pkg/ directory for internal consumption.
 
-    gem 'vagrant-beaker'
+```bash
 
-And then execute:
+  git clone git@github.com:puppetlabs/vagrant-beaker.git
+  cd vagrant-beaker
+  vagrant plugin install pkg/vagrant-beaker-0.0.1.gem
+  vagrant add box delivery examples/box/delivery.box
+  cp examples/Vagrantfiles/Vagrantfile.example1 ./Vagrantfile
 
-    $ bundle
+```
 
-Or install it yourself as:
+Then either update either update the username and password sections in the Vagrantfile or export them as environment variables like:
 
-    $ gem install vagrant-beaker
+```bash
+
+  export VSPHERE_USER='justin@puppetlabs.com'
+  export VSPHERE_PASSWORD='myP@$$w0rd'
+
+```
+
+Finally, assuming you have correct permissions withing vSphere you should be able to:
+
+```bash
+
+  vagrant up --provider=delivery
+
+```
+
+And log in via:
+
+```bash
+
+  vagrant ssh master
+
+```
 
 ## Usage
 
 TODO: Write usage instructions here
+
+The vagrant commands `up`, `destroy`, `status`, and `halt` should work relatively correctly at this point....
 
 ## Contributing
 
