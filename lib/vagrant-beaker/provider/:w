@@ -17,26 +17,37 @@ module VagrantPlugins
             connection = vsphere.instance_variable_get :@connection
             datacenter = connection.serviceInstance.find_datacenter
 
-            remote = find_and_validate_objects!( config, vsphere, ui )
+            ui.info 'Validating existence of Resource Pool: ' + config.target_resource_pool
+            ui.info 'Validating existence of Datastore: '     + config.target_datastore
+            ui.info 'Validating existence of Target Folder: ' + config.target_folder
+            ui.info 'Validating existence of Template: '      + config.template
+
+            resource_pool = vsphere.find_pool( config.target_resource_pool )
+            datastore     = vsphere.find_datastore( config.target_datastore )
+            target_folder = vsphere.find_folder( config.target_folder )
+            template      = datacenter.find_vm( config.template )
 
             username = real_username( config.username )
 
-            vmname, vmpath = nil, nil
-            loop do
-              vmname = vmname_for( username )
+            vmname = vmname_for( config.target_folder, username )
+            vmpath = [config.target_folder, vmname].join( '/' )
+
+            while datacenter.find_vm( vmpath )
+              vmname = vmname_for( config.target_folder, username )
               vmpath = [config.target_folder, vmname].join( '/' )
-              break unless datacenter.find_vm( vmpath )
             end
 
             ui.info 'Provisioning vm at: ' + vmpath
+            ui.info 'Cloning VM'
             ui.report_progress 0, 100
 
             task = clone( vsphere:       vsphere,
-                          resource_pool: remote[:resource_pool],
-                          datastore:     remote[:datastore],
-                          folder:        remote[:folder],
-                          template:      remote[:template],
-                          name:          vmname                   )
+                          connection:    connection,
+                          resource_pool: resource_pool,
+                          datastore:     datastore,
+                          folder:        target_folder,
+                          template:      template,
+                          name:          vmname         )
 
             wait_for task, connection, ui
 
@@ -67,55 +78,10 @@ module VagrantPlugins
             @app.call( env )
           end
 
-          def find_and_validate_objects!( config, vsphere, ui )
-            ui.info 'Validating existence of Resource Pool: ' + config.target_resource_pool
-            resource_pool, pool_error  = carefully_find type: 'Resource Pool',
-                                                        named: config.target_resource_pool,
-                                                        with: vsphere.method( :find_pool )
-
-            ui.info 'Validating existence of Datastore: ' + config.target_datastore
-            datastore, store_error = carefully_find type: 'Datastore',
-                                                    named: config.target_datastore,
-                                                    with: vsphere.method( :find_datastore )
-
-            ui.info 'Validating existence of Target Folder: ' + config.target_folder
-            folder, folder_error = carefully_find type: 'Target Folder',
-                                                  named: config.target_folder,
-                                                  with: vsphere.method( :find_folder )
-
-            connection = vsphere.instance_variable_get :@connection
-            ui.info 'Validating existence of Template: ' + config.template
-            template = connection.serviceInstance.find_datacenter.find_vm( config.template )
-            template_error = template ? nil : ['Template', config.template]
-
-            errors = [ pool_error, store_error, folder_error, template_error ].compact
-
-            unless errors.empty?
-              raise "There were errors when finding:\n" +
-                      errors.map {|e| e[0] + ': ' + e[1] }.join("\n")
-            end
-
-            return { resource_pool: resource_pool,
-                     datastore:     datastore,
-                     folder:        folder,
-                     template:      template        }
-          end
-
-          def carefully_find( args )
-            value, errors = nil, nil
-
-            begin
-              value = args[:with].call( args[:named] )
-            rescue SystemExit => e
-              errors = [ args[:type], args[:named] ]
-            end
-
-            return [ value, errors ]
-          end
-
-          def vmname_for( username )
+          def vmpath_for( target_folder, username )
             random = rand( 100...1000 )
-            username + '-' + random.to_s
+            vmname = username + '-' + random.to_s
+
           end
 
           def real_username( username )
@@ -131,14 +97,24 @@ module VagrantPlugins
             user
           end
 
+          # I'm pretty sure we shouldn't have to pass all of these....
+          # clone( vsphere:       vsphere,
+          #        connection:    connection,
+          #        resource_pool: resource_pool,
+          #        datastore:     datastore,
+          #        folder: target_folder,
+          #        template:      template,
+          #        name:          vmname          )
           def clone( args )
+            template = args[:connection].serviceInstance.find_datacenter.find_vm( config.template )
+
             relocate_spec = RbVmomi::VIM.VirtualMachineRelocateSpec(
-              datastore:     args[:datastore],
-              pool:          args[:resource_pool],
+              datastore:     args[:resource_pool],
+              pool:          args[:datastore],
               diskMoveType: :moveChildMostDiskBacking
             )
 
-            custom_spec = args[:vsphere].find_customization( path_for( args[:template] ) )
+            custom_spec = args[:vsphere].find_customization( args[:template] )
 
             spec = RbVmomi::VIM.VirtualMachineCloneSpec(
               config:        {},
@@ -153,11 +129,6 @@ module VagrantPlugins
                                                        folder: args[:folder] )
 
             return clone_task
-          end
-
-          def path_for( object )
-            index = object.path.index( object.path.rassoc( 'vm' ) ) + 1
-            object.path.drop( index ).map( &:last ).join( '/' )
           end
 
           def wait_for task, connection, ui

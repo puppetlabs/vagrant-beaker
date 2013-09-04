@@ -55,7 +55,7 @@ module VagrantPlugins
       end
 
       def self.setup_internationalization
-        locale_dir = File.expand_path( File.dirname(__FILE__) + '/../../../locales' )
+        locale_dir = File.expand_path( File.dirname(__FILE__) + '/../../locales' )
         locale_files = Dir[locale_dir + '/*.yml']
 
         I18n.load_path += locale_files

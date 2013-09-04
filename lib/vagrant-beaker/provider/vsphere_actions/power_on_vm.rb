@@ -1,7 +1,3 @@
-require 'securerandom'
-require 'json'
-require 'log4r'
-
 module VagrantPlugins
   module Beaker
     module Provider
@@ -9,25 +5,27 @@ module VagrantPlugins
         class PowerOnVM
           def initialize( app, env )
             @app = app
-            @logger = Log4r::Logger.new( 'vagrant::beaker::provider::vsphere_actions::clone_template' )
+            @logger = Log4r::Logger.new( 'vagrant_plugins::beaker::provider::vsphere_actions::power_on_vm' )
           end
 
           def call( env )
 
             config  = env[:machine].provider_config
             vsphere = env[:vsphere][:connection]
-
-            metadata = env[:vsphere][:metadata]
-            metadata[:state]  = 'provisoned-on'
-            machine = env[:vsphere][:machine]
+            connection = vsphere.instance_variable_get :@connection
 
             metadata_file = File.join( env[:machine].data_dir.to_s, 'metadata.json' )
+            metadata = JSON.parse( File.read( metadata_file ) )
+
+            vm = connection.serviceInstance.find_datacenter.
+              find_vm( config.target_folder + '/' + metadata['machine_name'] )
 
             env[:machine].ui.info 'Powering on VM and booting OS'
-
             env[:machine].ui.report_progress 0, 100
 
-            machine.PowerOnVM_Task.wait_for_completion
+            unless vm.summary.runtime.powerState == 'poweredOn'
+              vm.PowerOnVM_Task.wait_for_completion
+            end
 
             env[:machine].ui.clear_line
             env[:machine].ui.report_progress 9, 100
@@ -35,7 +33,7 @@ module VagrantPlugins
             200.times do |i|
               sleep 2
 
-              guest_summary = machine.summary.guest
+              guest_summary = vm.summary.guest
               if( guest_summary.toolsRunningStatus == 'guestToolsRunning' and
                   guest_summary.ipAddress != nil )
 
@@ -57,7 +55,7 @@ module VagrantPlugins
               sleep 2
 
               begin
-                Socket.getaddrinfo( machine.name, nil)
+                Socket.getaddrinfo( vm.name, nil)
                 break
               rescue
 
@@ -69,19 +67,21 @@ module VagrantPlugins
             end
 
             begin
-              Socket.getaddrinfo( machine.name, nil)
+              Socket.getaddrinfo( vm.name, nil)
               env[:machine].ui.clear_line
               env[:machine].ui.report_progress 100, 100
             rescue
               raise 'VM failed to come up'
             end
 
+            metadata['state']  = 'deployed-on'
             File.open( metadata_file, 'w+' ) {|f| f.write( metadata.to_json ) }
 
-            configSpec = RbVmomi::VIM.VirtualMachineConfigSpec( annotation: metadata.to_json )
-            machine.ReconfigVM_Task( spec: configSpec ).wait_for_completion
+
+            vm.ReconfigVM_Task( spec: { annotation: metadata.to_json } )
 
             File.open( metadata_file, 'w+' ) {|f| f.write( metadata.to_json ) }
+            File.open( File.join( env[:machine].data_dir.to_s, 'id' ), 'w+' ) { }
 
             env[:machine].ui.info 'VM ready'
 

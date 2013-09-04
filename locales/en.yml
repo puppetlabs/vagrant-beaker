@@ -1,11 +1,34 @@
 en:
-  vagrant:
+  vagrant_plugins:
     beaker:
       incompatible_version: 'vagrant-beaker requires Vagrant >= 1.2'
       states:
-        noop:
-          summary: 'A No Op Summary'
-          description: 'A No Op Description'
+        'deployed-on':
+          summary: running
+          description: |-
+            The vSphere instance is running. To power down the instance
+            run `vagrant halt`. To delete the instance from vSphere run
+            `vagrant destroy`.
+        'deployed-off':
+          summary: stopped
+          description: |-
+            The vSphere instance is powered off. To power on the instance
+            simply run `vagrant up`.
       provider:
-        already_exists: 'VM already exists'
+        vsphere:
+          unknown_template_path: |-
+            You must supply a either `template` or the `template_folder` and
+            `template_name` configuration options in your Vagrantfile.
+          no_server: You must supply a vCenter server to connect to
+          no_password: |-
+            You must provide a password for your vCenter user account.
+            You may set it either in a Vagrantfile or with the environment
+            variable VSPHERE_PASSWORD
+          no_username: |-
+            You must provide a username for your vCenter user account.
+            You may set it either in a Vagrantfile or with the environment
+            variable VSPHERE_USER
+        warn_already_exists: 'VM already exists'
+        warn_networks: 'what'
+        warn_not_found: 'what'
 

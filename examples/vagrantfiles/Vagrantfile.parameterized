@@ -1,0 +1,21 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure( '2' ) do |config|
+
+  config.vm.provider :delivery do |delivery|
+    delivery.template_folder       = 'Delivery/Quality Assurance/Templates/vCloud'
+
+    delivery.target_folder         = 'Delivery/Quality Assurance/' + ENV['TEAM'] + '/Sandbox'
+    delivery.target_resource_pool  = 'delivery/Quality Assurance/' + ENV['TEAM'] + '/Sandbox'
+    delivery.target_datastore      = 'instance0'
+
+    delivery.username =  ENV['VSPHERE_USER']
+    delivery.password =  ENV['VSPHERE_PASSWORD']
+    delivery.server   = 'vcenter.ops.puppetlabs.net'
+
+    delivery.default_template_name = 'centos-6-x86_64'
+    delivery.default_target_folder = 'Delivery/Quality Assurance/Unknown/Sandbox'
+    delivery.default_resource_pool = 'delivery/Quality Assurance/Unkown/Sandbox'
+  end
+end
